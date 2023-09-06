@@ -1,6 +1,4 @@
-const fs = require("fs/promises");
-const path = require("node:path");
-const Contact = require("../schemas/contact");
+const { Contact } = require("../schemas");
 
 const listContacts = async () => {
   return Contact.find();
@@ -22,7 +20,7 @@ const removeContact = async (contactId) => {
 const updateContact = async (contactId, body) => {
   return Contact.findByIdAndUpdate(contactId, body, { new: true });
 };
-//
+
 module.exports = {
   listContacts,
   getContactById,
