@@ -1,9 +1,12 @@
 // const bcrypt = require("bcrypt");
+require("dotenv").config();
 const jwt = require("jsonwebtoken");
 const users = require("../service");
-require("dotenv").config();
-
 const Joi = require("joi");
+const gravatar = require("gravatar");
+const path = require("path");
+const fs = require("fs/promises");
+const Jimp = require("jimp");
 
 const schema = Joi.object({
   password: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
@@ -15,7 +18,6 @@ const schema = Joi.object({
 
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
-// const cryptoCode = "s0//P4$$w0rD";
 
 const addUser = async (req, res, next) => {
   try {
@@ -43,11 +45,20 @@ const addUser = async (req, res, next) => {
     const hash = await bcrypt.hash(password, saltRounds).then(function (hash) {
       return hash;
     });
-    const newUser = await users.addUser({ ...req.body, password: hash });
+    const newUser = await users.addUser({
+      ...req.body,
+      password: hash,
+      avatarURL: gravatar.url(email, { s: "100", r: "x", d: "retro" }, false),
+    });
     res.status(201).json({
       user: {
         email: newUser.email,
         subscription: newUser.subscription,
+        avatarURL: gravatar.url(
+          newUser.email,
+          { s: "100", r: "x", d: "retro" },
+          false
+        ),
       },
     });
   } catch (e) {
@@ -134,9 +145,32 @@ const currUser = async (req, res, next) => {
   }
 };
 
+const avatarsDir = path.join(__dirname, "../", "public", "avatars");
+
+const updateUserAvatar = async (req, res) => {
+  const [_, token] = req.headers.authorization.split(" ");
+  const { id } = jwt.decode(token, process.env.SECRET_KEY);
+  const user = await users.getUserById(id);
+  Jimp.read(user.avatarURL)
+    .then((img) => {
+      img.resize(250, 250).write("./temp/avatar." + img.getExtension());
+    })
+    .catch((e) => console.log(e));
+  const { path: tempUpload, originalname } = req.file;
+  const filename = `${id}_${originalname}`;
+  const resultUpload = path.join(avatarsDir, filename);
+  await fs.rename(tempUpload, resultUpload);
+  const avatarURL = path.join("avatars", filename);
+  await users.updateUser(id, { avatarURL });
+  res.status(200).json({
+    avatarURL,
+  });
+};
+
 module.exports = {
   addUser,
   logInUser,
   logOutUser,
   currUser,
+  updateUserAvatar,
 };

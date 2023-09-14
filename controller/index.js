@@ -1,5 +1,11 @@
 const { get, add, remove, update, getById } = require("./contacts");
-const { addUser, logInUser, logOutUser, currUser } = require("./users");
+const {
+  addUser,
+  logInUser,
+  logOutUser,
+  currUser,
+  updateUserAvatar,
+} = require("./users");
 
 module.exports = {
   get,
@@ -11,4 +17,5 @@ module.exports = {
   logInUser,
   logOutUser,
   currUser,
+  updateUserAvatar,
 };
