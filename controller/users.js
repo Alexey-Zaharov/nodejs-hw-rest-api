@@ -7,6 +7,18 @@ const gravatar = require("gravatar");
 const path = require("path");
 const fs = require("fs/promises");
 const Jimp = require("jimp");
+const { nanoid } = require("nanoid");
+const nodemailer = require("nodemailer");
+const config = {
+  host: "smtp.meta.ua",
+  port: 465,
+  secure: true,
+  auth: {
+    user: "alexgoittest@meta.ua",
+    pass: process.env.EMAIL_PASSWORD,
+  },
+};
+const transporter = nodemailer.createTransport(config);
 
 const schema = Joi.object({
   password: Joi.string().pattern(new RegExp("^[a-zA-Z0-9]{3,30}$")),
@@ -49,6 +61,7 @@ const addUser = async (req, res, next) => {
       ...req.body,
       password: hash,
       avatarURL: gravatar.url(email, { s: "100", r: "x", d: "retro" }, false),
+      verificationToken: nanoid(),
     });
     res.status(201).json({
       user: {
@@ -80,9 +93,9 @@ const logInUser = async (req, res, next) => {
   try {
     const user = await users.getUser(req.body);
 
-    if (!user) {
+    if (!user || !user.verify) {
       return res.status(401).json({
-        message: "Email or password is wrong. Or not registred.",
+        message: "Email or password is wrong. Not registred or verifyed.",
       });
     }
 
@@ -167,10 +180,78 @@ const updateUserAvatar = async (req, res) => {
   });
 };
 
+const verifiedUser = async (req, res, next) => {
+  const verifedUser = await users.getVerifiedUser(req.params);
+  console.log(verifedUser.verify);
+  if (!verifedUser) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  users.updateUser(verifedUser._id.toString(), {
+    verificationToken: null,
+    verify: true,
+  });
+  res.status(200).json({
+    message: "Verification successful",
+  });
+  const emailOptions = {
+    from: "alexgoittest@meta.ua",
+    to: "noresponse@gmail.com",
+    subject: "Varification",
+    html: `<a>http://localhost:3000/api/users/verify/${req.params.verificationToken}</a>`,
+  };
+
+  transporter
+    .sendMail(emailOptions)
+    .then((info) => console.log(info))
+    .catch((err) => console.log(err));
+};
+
+const emailReSend = async (req, res, next) => {
+  if (!req.body.email) {
+    res.status(400).json({ message: "missing required field email" });
+  }
+  const validData = schema.validate({ email: req.body.email });
+  if (validData.error) {
+    return res.status(400).json({
+      message: "Validation error",
+      data: validData.error,
+    });
+  }
+
+  const user = await users.getUser(req.body);
+  if (!user) {
+    return res.status(400).json({ message: "User with such email not found" });
+  }
+  if (user.verify) {
+    res.status(400).json({ message: "Verification has already been passed" });
+  }
+  const emailOptions = {
+    from: "alexgoittest@meta.ua",
+    to: "noresponse@gmail.com",
+    subject: "Varification",
+    html: `<a>http://localhost:3000/api/users/verify/${user.verificationToken}</a>`,
+  };
+
+  transporter
+    .sendMail(emailOptions)
+    .then((info) => {
+      res.status(200).json({ message: "Verification email sent" });
+      console.log(info);
+    })
+    .catch((err) => {
+      res.status(err.responseCode).json({
+        message: `${err.response}`,
+      });
+      console.log(err);
+    });
+};
+
 module.exports = {
   addUser,
   logInUser,
   logOutUser,
   currUser,
   updateUserAvatar,
+  verifiedUser,
+  emailReSend,
 };
