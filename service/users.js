@@ -19,6 +19,9 @@ const updateUser = async (userId, body) => {
 const getCurrUser = async (token) => {
   return User.findOne({ token });
 };
+const getVerifiedUser = async (verifiToken) => {
+  return User.findOne(verifiToken);
+};
 
 module.exports = {
   getUser,
@@ -26,4 +29,5 @@ module.exports = {
   updateUser,
   getUserById,
   getCurrUser,
+  getVerifiedUser,
 };

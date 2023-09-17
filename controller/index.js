@@ -5,6 +5,8 @@ const {
   logOutUser,
   currUser,
   updateUserAvatar,
+  verifiedUser,
+  emailReSend,
 } = require("./users");
 
 module.exports = {
@@ -18,4 +20,6 @@ module.exports = {
   logOutUser,
   currUser,
   updateUserAvatar,
+  verifiedUser,
+  emailReSend,
 };

@@ -12,6 +12,7 @@ const {
   updateUser,
   getUserById,
   getCurrUser,
+  getVerifiedUser,
 } = require("./users");
 
 module.exports = {
@@ -25,4 +26,5 @@ module.exports = {
   updateUser,
   getUserById,
   getCurrUser,
+  getVerifiedUser,
 };
